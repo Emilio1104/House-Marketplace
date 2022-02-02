@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { getAuth, onAuthStateChanged } from "firebase/auth";
+import {
+  getStorage,
+  ref,
+  uploadBytesResumable,
+  getDownloadURL,
+} from "firebase/storage";
+import { db } from "../firebase.config";
+import { v4 as uuidv4 } from "uuid";
 import { useNavigate } from "react-router-dom";
 import Spinner from "../components/Spinner";
 import { toast } from "react-toastify";
@@ -89,6 +97,53 @@ function CreateListing() {
       geolocation.lng = longitude;
       location = address;
     }
+
+    //Store images in firebase
+    const storeImage = async (image) => {
+      return new Promise((resolve, reject) => {
+        const storage = getStorage();
+        const fileName = `${auth.currentUser.uid}-${images.name}-${uuidv4()}`;
+        const storageRef = ref(storage, `images/${fileName}`);
+        const uploadTask = uploadBytesResumable(storageRef, image);
+
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress =
+              (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            console.log("Upload is " + progress + "% done");
+            switch (snapshot.state) {
+              case "paused":
+                console.log("Upload is paused");
+                break;
+              case "running":
+                console.log("Upload is running");
+                break;
+              default:
+                break;
+            }
+          },
+          (error) => {
+            reject(error);
+          },
+          () => {
+            getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+              console.log("File available at", downloadURL);
+              resolve(downloadURL);
+            });
+          }
+        );
+      });
+    };
+
+    const imgUrls = await Promise.all(
+      [...images].map((image) => storeImage(image))
+    ).catch(() =>{
+      setLoading(false)
+      toast.error('Images not uploaded')
+      return
+    })
+    console.log(imgUrls)
     setLoading(false);
   };
 
@@ -132,7 +187,8 @@ function CreateListing() {
               className={type === "sale" ? "formButtonActive" : "formButton"}
               id="type"
               value="sale"
-              onClick={onMutate}>
+              onClick={onMutate}
+            >
               Sell
             </button>
             <button
@@ -140,7 +196,8 @@ function CreateListing() {
               className={type === "rent" ? "formButtonActive" : "formButton"}
               id="type"
               value="rent"
-              onClick={onMutate}>
+              onClick={onMutate}
+            >
               Rent
             </button>
           </div>
@@ -195,15 +252,19 @@ function CreateListing() {
               value={true}
               onClick={onMutate}
               min="1"
-              max="50">
+              max="50"
+            >
               Yes
             </button>
             <button
-              className={!parking && parking !== null ? "formButtonActive" : "formButton"}
+              className={
+                !parking && parking !== null ? "formButtonActive" : "formButton"
+              }
               type="button"
               id="parking"
               value={false}
-              onClick={onMutate}>
+              onClick={onMutate}
+            >
               No
             </button>
           </div>
@@ -215,15 +276,21 @@ function CreateListing() {
               type="button"
               id="furnished"
               value={true}
-              onClick={onMutate}>
+              onClick={onMutate}
+            >
               Yes
             </button>
             <button
-              className={!furnished && furnished !== null ? "formButtonActive" : "formButton"}
+              className={
+                !furnished && furnished !== null
+                  ? "formButtonActive"
+                  : "formButton"
+              }
               type="button"
               id="furnished"
               value={false}
-              onClick={onMutate}>
+              onClick={onMutate}
+            >
               No
             </button>
           </div>
@@ -272,15 +339,19 @@ function CreateListing() {
               type="button"
               id="offer"
               value={true}
-              onClick={onMutate}>
+              onClick={onMutate}
+            >
               Yes
             </button>
             <button
-              className={!offer && offer !== null ? "formButtonActive" : "formButton"}
+              className={
+                !offer && offer !== null ? "formButtonActive" : "formButton"
+              }
               type="button"
               id="offer"
               value={false}
-              onClick={onMutate}>
+              onClick={onMutate}
+            >
               No
             </button>
           </div>
@@ -317,7 +388,9 @@ function CreateListing() {
           )}
 
           <label className="formLabel">Images</label>
-          <p className="imagesInfo">The first image will be the cover (max 6).</p>
+          <p className="imagesInfo">
+            The first image will be the cover (max 6).
+          </p>
           <input
             className="formInputFile"
             type="file"
