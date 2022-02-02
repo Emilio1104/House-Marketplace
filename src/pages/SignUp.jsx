@@ -4,6 +4,9 @@ import { ReactComponent as ArrowRightIcon } from "../assets/svg/keyboardArrowRig
 import visibilityIcon from "../assets/svg/visibilityIcon.svg";
 import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import { db } from "../firebase.config";
+import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { toast } from "react-toastify";
+import OAuth from "../components/OAuth";
 
 function SignUp() {
   const [showPassword, setShowPassword] = useState(false);
@@ -33,9 +36,17 @@ function SignUp() {
       updateProfile(auth.currentUser, {
         displayName: name,
       });
+
+      // Copy formdata, delete password, set timestamp
+      const formDataCopy = { ...formData };
+      delete formDataCopy.password;
+      formDataCopy.timestamp = serverTimestamp();
+      //update the database with the data copied from the formdata
+      await setDoc(doc(db, "users", user.uid), formDataCopy);
+
       navigate("/");
     } catch (error) {
-      console.log(error);
+      toast.error("Something went wrong with registration");
     }
   };
 
@@ -88,7 +99,7 @@ function SignUp() {
             </div>
           </form>
 
-          {/* Google OAuth */}
+          <OAuth />
           <Link to="/sign-in" className="registerLink">
             Sign in instead
           </Link>
